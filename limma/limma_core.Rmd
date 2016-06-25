@@ -1,0 +1,94 @@
+---
+title: "limma core"
+author: "gyzhou"
+date: "23/Jun/2016"
+output: html_document
+---
+
+This file reproduces key algorithm implemented in limma package. First, we simulate the data to use and define the design matrix.
+```{r}
+library(limma)
+set.seed(100)
+sd <- 0.3*sqrt(4/rchisq(100,df=4))
+y <- matrix(rnorm(100*6,sd=sd),100,6)
+rownames(y) <- paste("Gene",1:100)
+y[1:2,4:6] <- y[1:2,4:6] + 2
+design <- factor(c("A", "A", "B", "B", "C", "C"))
+(design <- model.matrix(~0+design))
+```
+
+## Statistical Methods for linear models
+#### Basic properties of linear models
+We use multiple linear regression model: $$Y_i = \alpha_i x_i + \varepsilon_i, i=1,\dots,6$$
+We can use linear algebra to represent this model: 
+$$\mathbf{Y} = \begin{pmatrix} Y_1\\ Y_2\\ \vdots\\ Y_6 \end{pmatrix}, \mathbf{X} = \begin{pmatrix} 1&0&0 \\ 1&0&0 \\ 0&1&0 \\ 0&1&0 \\ 0&0&1 \\ 0&0&1 \end{pmatrix}, \boldsymbol{\alpha} = \begin{pmatrix} \alpha_1 \\ \alpha_2 \\ \alpha_3 \end{pmatrix}, \boldsymbol{\varepsilon} = \begin{pmatrix} \varepsilon_1\\ \varepsilon_2\\ \vdots\\ \varepsilon_6 \end{pmatrix}$$
+and $$\mathbf{Y} = \mathbf{X} \boldsymbol{\alpha} + \boldsymbol{\varepsilon}$$.
+
+The mathematical theory tells us that the unbiased least quaires estimate of $\alpha$ can be computed with following equation:
+$$\hat{\alpha} = (\mathbf{X}^T \mathbf{X})^{-1} \mathbf{X}^T \mathbf{Y}$$
+Also, under the assumption that the errors have mean zero and are uncorrelated with constant variance $\sigma^2$, the variance-covariance matrix of the least squares estimate $\hat{\alpha}$ is $$\Sigma_{\hat{\alpha} \hat{\alpha}} = \sigma^2 (\mathbf{X}^T \mathbf{X})^{-1}$$
+
+#### Estimation of $\sigma^2$
+The vector of residuals is $$\hat{\varepsilon} = \mathbf{Y} - \mathbf{X} \hat{\alpha}$$
+It can be proved that $s^2 = \frac{1}{N-p} \sum_{i=1}^N \hat{\varepsilon}^2$ is the unbiased estimator of $\sigma^2$.
+
+#### Inference about $\alpha$
+Because the assumption that $\varepsilon_i$ are independent and normally distributed and $\hat{\alpha}$ is the linear combination of iid normal variables, they are also normally distributed.Thus, each component $\hat{\alpha}_i$ of $\hat{\alpha}$ is normally distributed with mean $\alpha_i$ and variance $\sigma^2 c_{ii}$, where $\mathbf{C} = (\mathbf{X}^T \mathbf{X})^{-1}$. The standard error of $\hat{\alpha_g}_i$ can thus be estimated as $$s_{\hat{\alpha}_i} = s \sqrt{c_{ii}}$$
+Under the normality assumption it can be shown that $$\frac{{\hat{\alpha}_i} - {\hat{\alpha}}} {s_{\hat{\alpha}_i}} \sim t_{n-p}$$
+
+#### Practice with inference about $\alpha_g$
+We then go through the core algorithm the limma takes. We first want to obtain the coefficient estimators $\hat{\alpha_g}$. The following three methods produce same results as they apply the same principle, although in fact, qr factorization implemented in `lmFit` and `lm` is an optimized method which works much faster for large datasets.
+```{r}
+fit <- lmFit(y[1,], design)
+fit$coef
+lm(y[1,] ~ 0 + design)
+solve(crossprod(design)) %*% t(design) %*% y[1,]
+```
+
+Next we try to get the estimators $s_g^2$ of $\sigma_g^2$ and the estimated variance-covariance matrix. Again from the theorm above we get $$\mbox{Var} (\hat{\alpha_g}) = \mathbf{V}_g s_g^2$$ where $s_g^2 = \frac{1}{N-P} \sum_{i=1}^N \hat{\varepsilon}^2$ and $\mathbf{V}_g = (\mathbf{X}^T \mathbf{X})^{-1}$.
+The following three methods produce same results as they apply the same principle.
+```{r}
+## by definition
+sigma2 <- sum((y[1,] - design %*% t(fit$coef))^2) ## sum of residuals
+s2 <- sigma2 / (6 - 3) ## unbiased estimator for sigma^2
+sqrt(solve(crossprod(design))) * sqrt(s2) ## unbiased estimator for sigma
+
+## lm
+summary(lm(y[1,] ~ 0 + design))
+
+## lmFit
+fit$std ## numeric matrix conformal with coef containing the unscaled standard deviations for the coefficient estimators. 
+sqrt(solve(crossprod(design)))
+
+fit$sigma ## numeric vector containing the residual standard deviation for each gene. sg
+sqrt(s2)
+
+fit$sigma * fit$std ## estimators of standard deviation of \alpha_g
+```
+
+#### Theory of contrast matrix
+We first define the contrast matrix. For example, We are interested in comparison of $B-A$ and $C-B$, then our contrast matrix $\mathbf{C}$ is $\begin{pmatrix} -1&0 \\ 1&-1 \\ 0&1 \end{pmatrix}$, where $$\mathbf{C}^T \alpha = \begin{pmatrix} \alpha_2 - \alpha_1 \\ \alpha_3 - \alpha_2 \end{pmatrix} = \boldsymbol{\beta}$$
+Then the contrast estimators $\hat{\boldsymbol{\beta_g}} = \mathbf{C}^T \hat{\boldsymbol{\alpha_g}}$ has variance-covariance matrix:
+$$\mbox{Var} (\hat{\boldsymbol{\beta_g}}) =  \mathbf{C}^T \mathbf{V}_g \mathbf{C} s_g^2$$
+As the contrast estimators are linear combination of coefficient estimators, they are also assumed to be normally distributed with mean $\boldsymbol{\beta_g}$ and variance-covariance matrix $\mathbf{C}^T \mathbf{V}_g \mathbf{C} \sigma^2$. The residual variances $s_g^2$ are assumed to follow approxiamately a scale chisquiare distribution.
+
+#### Practice of contrast matrix
+```{r}
+(con <- makeContrasts(B.VS.A = designB - designA, 
+                     C.VS.A = designC - designA,
+                     levels = colnames(design)))
+## limma
+contrasts.fit(fit, con)$coef
+
+## by definition
+t(con) %*% t(fit$coef)
+fit$coef %*% con
+
+## limma
+contrasts.fit(fit, con)
+
+## by definition
+t(con) %*% solve(crossprod(design)) %*% con * s2
+```
+
+#### Distriubtion and inference 
