@@ -57,13 +57,13 @@ sqrt(solve(crossprod(design))) * sqrt(s2) ## unbiased estimator for sigma
 summary(lm(y[1,] ~ 0 + design))
 
 ## lmFit
-fit$std ## numeric matrix conformal with coef containing the unscaled standard deviations for the coefficient estimators. 
+fit$stdev.unscaled ## numeric matrix conformal with coef containing the unscaled standard deviations for the coefficient estimators. 
 sqrt(solve(crossprod(design)))
 
 fit$sigma ## numeric vector containing the residual standard deviation for each gene. sg
 sqrt(s2)
 
-fit$sigma * fit$std ## estimators of standard deviation of \alpha_g
+fit$sigma * fit$stdev.unscaled ## estimators of standard deviation of \alpha_g
 ```
 
 #### Theory of contrast matrix
@@ -85,10 +85,57 @@ t(con) %*% t(fit$coef)
 fit$coef %*% con
 
 ## limma
-contrasts.fit(fit, con)
+contrasts.fit(fit, con)$cov ## \mathbf{C}^T \mathbf{V}_g \mathbf{C}
 
 ## by definition
 t(con) %*% solve(crossprod(design)) %*% con * s2
+contrasts.fit(fit, con)$cov * s2
 ```
 
 #### Distriubtion and inference 
+Let $v_{gj}$ be the jth diagnal element of $\mathbf{C}^T \mathbf{V}_g \mathbf{C}$. The  distribution of $\hat{\beta}_g$ can be summarized by:
+$$\hat{\beta}_{gj} | \beta_{gj}, \sigma^2 \sim N(\beta_{gj}, v_{gj} \sigma^2)$$ and
+$$s_g^2 | \sigma_g^2 \sim \frac{\sigma_g^2}{d_g} \chi_{d_g}^2$$
+where $d_g$ is the residual degrees of freedom for linear models of gene g ($N-P$). Under these assumptions, t-statistics can be calculated with $d_{g}$ degrees of freedom:
+$$t_{gj} = \frac{\hat{\beta}_{gj}} {s_g \sqrt{v_{gj}}}$$
+For null hypothesis, test $H_0: \beta_{gj} = 0$.
+
+```{r}
+## by definition
+beta_hat <- contrasts.fit(fit, con)$coef
+s_g <- fit$sigma       
+v_gj <- diag(contrasts.fit(fit, con)$cov)
+(t = beta_hat / (s_g * sqrt(v_gj)))
+2 * pt(t, 6-3, lower.tail = F)
+```
+
+## Hierarchical Models
+limma uses emprical bayes to allow robust estimation of standard error when sample size is small. The key is to define the prior distributions for unknown coefficients $\hat{\beta{gj}}$ and unknown variances $\sigma_g^2$.
+
+We can pool the whole genes to derive infomation for prior distriubtions. The prior distribution, which describes randomness in picking a gene is:
+$$\frac{1}{\sigma_g^2} \sim \frac{1}{d_0 s_0^2} \chi_{d_0}^2$$
+The sampling distribution, which describes the randomness of the variance of a gene in different sample, is defined in the previous section. Limma also assumes that for any given $j$, a $\beta_{gj}$ is non zero with known probability 
+$$\mbox{Pr} (\beta_{gj} \ne 0) = p_j$$
+where $p_j$ is the expected proportion of truly differentially expressed genes. Then for these portion of genes, prior information on the coefficient is assumed equivalent to a prior observation equal to zero (assume approximately same number of upregulated and downregulated genes) with unscaled variance $v_{0j}$,
+$$\beta_{gj} | \sigma_g^2, \beta_{gj} \ne 0 \sim N(0, v_{0j} \sigma_g^2)$$
+Under the Hierarchical model, we now want to compute the bayesian estimator $\mbox{E} (\sigma_g^2 | s_g^2)$ of $\sigma_g^2$. We can use bayesian theroy to derive that:
+$$\begin{align} f_{\sigma_g^{-2} | s_g^2} (\sigma_g^{-2} | s_g^2) = \frac{f_{s_g^2 | \sigma_g^{-2}} (s_g^2 | \sigma_g^{-2}) f_{\sigma_g^{-2}} (\sigma_g^{-2})} {\int f_{s_g^2 | \sigma_g^{-2}} (s_g^2 | \sigma_g^{-2}) f_{\sigma_g^{-2}} (\sigma_g^{-2}) \, d(\sigma_g^{-2})} \end{align}$$
+
+The intergrand is 
+$$(\frac{d_g}{2\sigma_g^2})^{d_g/2} \frac{s_g^{2(d_g/2-1)}} {\Gamma(d_g/2)} \mbox{exp} (- \frac{d_g s_g^2} {2\sigma_g^2}) \\
+\times (\frac{d_0 s_0^2}{2})^{d_0/2} \frac{\sigma_g^{-2(d_0/2-1)}} {\Gamma(d_0/2)} \mbox{exp} (- \frac{d_0 s_0^2} {2\sigma_g^2}) \\
+= \frac{(d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)}} {\Gamma(d_g/2) \Gamma(d_0/2)} \sigma_g^{-2(d_0/2 + d_g/2 - 1)} \mbox{exp} \{-\sigma_g^{-2} (d_g s_g^2 + d_0 s_0^2)/2 \}$$
+
+Using known definite integration $\int_0^\infty x^a e^{-bx} \, dx = b^{-a-1} \Gamma(a+1)$, we get the integrand integrates to:
+$$\frac{ (d_0 s_0^2/2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2-1)}  \Gamma(d_g/2 + d_0/2)} {\Gamma(d_g/2) \Gamma(d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2})^{-(d_g/2 + d_0/2)}$$
+
+Thus, we get:
+$$\begin{align} f_{\sigma_g^{-2} | s_g^2} (\sigma_g^{-2} | s_g^2) &= \frac{\sigma_g^2} {\Gamma(d_g/2+d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2})^{(d_0+d_g)/2} \mbox{exp} \{ -(d_g s_g^2 + d_0 s_0^2) / {2 \sigma_g^2} \} \end{align}$$
+
+The pdf of $\chi^2$ with $d_f = d_0+d_g$ and $\chi^2 = \frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2}$ is:
+$$\frac{1} {d_g s_g^2 + d_0 s_0^2} \frac{\sigma_g^2} {\Gamma(d_g/2+d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2})^{(d_0+d_g)/2} \mbox{exp} \{ -(d_g s_g^2 + d_0 s_0^2) / {2 \sigma_g^2} \}$$
+
+Thus, 
+$$\sigma_g^{-2} | s_g^2 \sim \frac{\chi_{d_g + d_0}^2} {d_g s_g^2 + d_0 s_0^2}$$
+And, $$\mbox{E} (\sigma_g^2 | s_g^2) = \frac{d_g s_g^2 + d_0 s_0^2} {d_g + d_0}$$
+
