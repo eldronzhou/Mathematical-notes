@@ -114,28 +114,54 @@ limma uses emprical bayes to allow robust estimation of standard error when samp
 
 We can pool the whole genes to derive infomation for prior distriubtions. The prior distribution, which describes randomness in picking a gene is:
 $$\frac{1}{\sigma_g^2} \sim \frac{1}{d_0 s_0^2} \chi_{d_0}^2$$
-The sampling distribution, which describes the randomness of the variance of a gene in different sample, is defined in the previous section. Limma also assumes that for any given $j$, a $\beta_{gj}$ is non zero with known probability 
+The sampling distribution, which describes the randomness of the variance of a gene in different sample, is defined in the previous section:
+$$s_g^2 | \sigma_g^2 \sim \frac{\sigma_g^2}{d_g} \chi_{d_g}^2$$
+
+Limma also assumes that for any given $j$, a $\beta_{gj}$ is non zero with known probability 
 $$\mbox{Pr} (\beta_{gj} \ne 0) = p_j$$
 where $p_j$ is the expected proportion of truly differentially expressed genes. Then for these portion of genes, prior information on the coefficient is assumed equivalent to a prior observation equal to zero (assume approximately same number of upregulated and downregulated genes) with unscaled variance $v_{0j}$,
 $$\beta_{gj} | \sigma_g^2, \beta_{gj} \ne 0 \sim N(0, v_{0j} \sigma_g^2)$$
 Under the Hierarchical model, we now want to compute the bayesian estimator $\mbox{E} (\sigma_g^2 | s_g^2)$ of $\sigma_g^2$. We can use bayesian theroy to derive that:
-$$\begin{align} f_{\sigma_g^{-2} | s_g^2} (\sigma_g^{-2} | s_g^2) = \frac{f_{s_g^2 | \sigma_g^{-2}} (s_g^2 | \sigma_g^{-2}) f_{\sigma_g^{-2}} (\sigma_g^{-2})} {\int f_{s_g^2 | \sigma_g^{-2}} (s_g^2 | \sigma_g^{-2}) f_{\sigma_g^{-2}} (\sigma_g^{-2}) \, d(\sigma_g^{-2})} \end{align}$$
+$$\begin{align} f_{\sigma_g^2 | s_g^2} (\sigma_g^2 | s_g^2) = \frac{f_{s_g^2 | \sigma_g^2} (s_g^2 | \sigma_g^2) f_{\sigma_g^2} (\sigma_g^2)} {\int f_{s_g^2 | \sigma_g^2} (s_g^2 | \sigma_g^2) f_{\sigma_g^2} (\sigma_g^2) \, d(\sigma_g^2)} \end{align}$$
 
-The intergrand is 
+It is easy to derive that:
+$$\begin{align} f_{s_g^2 | \sigma_g^2} (s_g^2 | \sigma_g^2) &= f_{s_g^2 | \sigma_g^2}(\frac{d_g}{\sigma_g^2} s_g^2) \frac{d_g}{\sigma_g^2} \\ 
+&= (\frac{d_g}{2\sigma_g^2})^{d_g/2} \frac{s_g^{2(d_g/2-1)}} {\Gamma(d_g/2)} \mbox{exp} (- \frac{d_g s_g^2} {2\sigma_g^2}) \end{align}$$
+
+$$\begin{align} f_{\sigma_g^2} (\sigma_g^2) &= f_{\sigma_g^2} (\frac{\sigma_g^2} {d_0 s_0^2}) \frac{1}{d_0 s_0^2} \\
+&= (\frac{d_0 s_0^2}{2})^{d_0/2} \frac{\sigma_g^{2(-d_0/2-1)}} {\Gamma(d_0/2)} \mbox{exp} (- \frac{d_0 s_0^2} {2\sigma_g^2})
+\end{align}$$
+
+The intergrand thus is 
 $$(\frac{d_g}{2\sigma_g^2})^{d_g/2} \frac{s_g^{2(d_g/2-1)}} {\Gamma(d_g/2)} \mbox{exp} (- \frac{d_g s_g^2} {2\sigma_g^2}) \\
 \times (\frac{d_0 s_0^2}{2})^{d_0/2} \frac{\sigma_g^{-2(d_0/2-1)}} {\Gamma(d_0/2)} \mbox{exp} (- \frac{d_0 s_0^2} {2\sigma_g^2}) \\
-= \frac{(d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)}} {\Gamma(d_g/2) \Gamma(d_0/2)} \sigma_g^{-2(d_0/2 + d_g/2 - 1)} \mbox{exp} \{-\sigma_g^{-2} (d_g s_g^2 + d_0 s_0^2)/2 \}$$
+= \frac{(d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)}} {\Gamma(d_g/2) \Gamma(d_0/2)} \sigma_g^{2(-d_0/2 - d_g/2 - 1)} \mbox{exp} \{- (d_g s_g^2 + d_0 s_0^2)/{2 \sigma_g^2} \}$$
 
-Using known definite integration $\int_0^\infty x^a e^{-bx} \, dx = b^{-a-1} \Gamma(a+1)$, we get the integrand integrates to:
+Using known definite integration $\int_0^\infty x^a e^{-b/x} \, dx = \int_0^\infty x^{-a-2} e^{-bx} \, dx = b^{a+1} \Gamma(-a-1), (a<0, b>0)$, we get the integrand integrates to:
 $$\frac{ (d_0 s_0^2/2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2-1)}  \Gamma(d_g/2 + d_0/2)} {\Gamma(d_g/2) \Gamma(d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2})^{-(d_g/2 + d_0/2)}$$
 
 Thus, we get:
-$$\begin{align} f_{\sigma_g^{-2} | s_g^2} (\sigma_g^{-2} | s_g^2) &= \frac{\sigma_g^2} {\Gamma(d_g/2+d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2})^{(d_0+d_g)/2} \mbox{exp} \{ -(d_g s_g^2 + d_0 s_0^2) / {2 \sigma_g^2} \} \end{align}$$
+$$\begin{align} f_{\sigma_g^2 | s_g^2} (\sigma_g^2 | s_g^2) &= \frac{1}{\sigma_g^2 \Gamma(d_g/2+d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2})^{(d_0+d_g)/2} \mbox{exp} \{ -(d_g s_g^2 + d_0 s_0^2) / {2 \sigma_g^2} \} \end{align}$$
 
-The pdf of $\chi^2$ with $d_f = d_0+d_g$ and $\chi^2 = \frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2}$ is:
+The pdf of $\chi^2$ with $d_f = d_0+d_g$ and $\chi^2 = \frac{d_g s_g^2 + d_0 s_0^2} {\sigma_g^2}$ is:
 $$\frac{1} {d_g s_g^2 + d_0 s_0^2} \frac{\sigma_g^2} {\Gamma(d_g/2+d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2})^{(d_0+d_g)/2} \mbox{exp} \{ -(d_g s_g^2 + d_0 s_0^2) / {2 \sigma_g^2} \}$$
 
 Thus, 
 $$\sigma_g^{-2} | s_g^2 \sim \frac{\chi_{d_g + d_0}^2} {d_g s_g^2 + d_0 s_0^2}$$
-And, $$\mbox{E} (\sigma_g^2 | s_g^2) = \frac{d_g s_g^2 + d_0 s_0^2} {d_g + d_0}$$
+And, $$\mbox{E} (\sigma_g^2 | s_g^2) = \frac{d_g s_g^2 + d_0 s_0^2} {d_g + d_0 - 2}$$
 
+The posterior mean shrinks the observed variance $s_g^2$ towards the global variance $s_0^2$ and the weights depend on the sample size through the degrees of freedom $d_g$ and the shape of the prior distribution through $d_0$. 
+
+#### Marginal distribution
+Now we compute the null joint distribution of $\hat{\beta}_{gj}$ and $s_g^2$, 
+$$f(\hat{\beta}_{gj}, s_g^2 | \beta = 0) = \int f(\hat{\beta}_{gj} | s_g^2, \beta = 0) f(s_g^2 | \sigma_g^2) f(\sigma_g^2) \, d(\sigma_g^2) $$
+
+The intergrand is:
+$$\frac{1} {(2 \pi v_{gj} \sigma_g^2)^{1/2}} \mbox{exp} (- \frac{\hat{\beta}_{gj}^2} {2 v_{gj} \sigma_g^2}) \\ \times (\frac{d_g}{2\sigma_g^2})^{d_g/2} \frac{s_g^{2(d_g/2-1)}} {\Gamma(d_g/2)} \mbox{exp} (- \frac{d_g s_g^2} {2\sigma_g^2}) \\ \times
+(\frac{d_0 s_0^2}{2})^{d_0/2} \frac{\sigma_g^{2(-d_0/2-1)}} {\Gamma(d_0/2)} \mbox{exp} (- \frac{d_0 s_0^2} {2\sigma_g^2}) \\
+= \frac{(d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)}} {(2 \pi v_{gj})^{1/2} \Gamma(d_g/2) \Gamma(d_0/2)} \sigma_g^{2(-1/2 -d_0/2 - d_g/2 - 1)} \mbox{exp} \{- ( \frac{\hat{\beta}_{gj}^2} {v_{gj}} + d_g s_g^2 + d_0 s_0^2)/{2 \sigma_g^2} \}$$
+
+which integrates to:
+$$f(\hat{\beta}_{gj}, s_g^2 | \beta = 0) \\= 
+(1/{2 v_{gj}}^{1/2}) (d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)} \frac{\Gamma(1/2 + d_0/2 + d_g/2)} {\Gamma(d_0/2) \Gamma(d_g/2)} (\frac{\hat{\beta}_{gj}^2 / v_{gj} + d_0 s_0^2 + d_g s_g^2}{2})^{-(1 + d_0 + d_g)/2}$$
+Clearly $\hat{\beta}_{gj}$ and $s_g^2$ is not independent.
