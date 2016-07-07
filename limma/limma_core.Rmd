@@ -69,7 +69,7 @@ fit$sigma * fit$stdev.unscaled ## estimators of standard deviation of \alpha_g
 #### Theory of contrast matrix
 We first define the contrast matrix. For example, We are interested in comparison of $B-A$ and $C-B$, then our contrast matrix $\mathbf{C}$ is $\begin{pmatrix} -1&0 \\ 1&-1 \\ 0&1 \end{pmatrix}$, where $$\mathbf{C}^T \alpha = \begin{pmatrix} \alpha_2 - \alpha_1 \\ \alpha_3 - \alpha_2 \end{pmatrix} = \boldsymbol{\beta}$$
 Then the contrast estimators $\hat{\boldsymbol{\beta_g}} = \mathbf{C}^T \hat{\boldsymbol{\alpha_g}}$ has variance-covariance matrix:
-$$\mbox{Var} (\hat{\boldsymbol{\beta_g}}) =  \mathbf{C}^T \mathbf{V}_g \mathbf{C} s_g^2$$
+$$\mbox{Var} (\hat{\boldsymbol{\beta_g}}) = \mathbf{C}^T \mathbf{V}_g \mathbf{C} s_g^2$$
 As the contrast estimators are linear combination of coefficient estimators, they are also assumed to be normally distributed with mean $\boldsymbol{\beta_g}$ and variance-covariance matrix $\mathbf{C}^T \mathbf{V}_g \mathbf{C} \sigma^2$. The residual variances $s_g^2$ are assumed to follow approxiamately a scale chisquiare distribution.
 
 #### Practice of contrast matrix
@@ -147,14 +147,17 @@ The pdf of $\chi^2$ with $d_f = d_0+d_g$ and $\chi^2 = \frac{d_g s_g^2 + d_0 s_0
 $$\frac{1} {d_g s_g^2 + d_0 s_0^2} \frac{\sigma_g^2} {\Gamma(d_g/2+d_0/2)} (\frac{d_g s_g^2 + d_0 s_0^2} {2 \sigma_g^2})^{(d_0+d_g)/2} \mbox{exp} \{ -(d_g s_g^2 + d_0 s_0^2) / {2 \sigma_g^2} \}$$
 
 Thus, 
-$$\sigma_g^{-2} | s_g^2 \sim \frac{\chi_{d_g + d_0}^2} {d_g s_g^2 + d_0 s_0^2}$$
-And, $$\mbox{E} (\sigma_g^2 | s_g^2) = \frac{d_g s_g^2 + d_0 s_0^2} {d_g + d_0 - 2}$$
+$$\sigma_g^2 | s_g^2 \sim \frac{d_g s_g^2 + d_0 s_0^2} {\chi_{d_g + d_0}^2}$$
+And, $$\tilde{s_g}^{-2} = \mbox{E} (\sigma_g^{-2} | s_g^2) = \frac{d_g s_g^2 + d_0 s_0^2} {d_g + d_0}$$
+
+Now define the moderate t-statistic as:
 
 The posterior mean shrinks the observed variance $s_g^2$ towards the global variance $s_0^2$ and the weights depend on the sample size through the degrees of freedom $d_g$ and the shape of the prior distribution through $d_0$. 
 
+
 #### Marginal distribution
-Now we compute the null joint distribution of $\hat{\beta}_{gj}$ and $s_g^2$, 
-$$f(\hat{\beta}_{gj}, s_g^2 | \beta = 0) = \int f(\hat{\beta}_{gj} | s_g^2, \beta = 0) f(s_g^2 | \sigma_g^2) f(\sigma_g^2) \, d(\sigma_g^2) $$
+Now we compute the null joint distribution of $\hat{\beta}_{gj}$ and $s_g^2$, here assuming $\hat{\beta}_{gj}$ and $s_g^2$ is independen under the conditional distribution, we get:
+$$f(\hat{\beta}_{gj}, s_g^2 | \beta_{gj} = 0) = \int f(\hat{\beta}_{gj} | s_g^2, \beta = 0) f(s_g^2 | \sigma_g^2) f(\sigma_g^2) \, d(\sigma_g^2) $$
 
 The intergrand is:
 $$\frac{1} {(2 \pi v_{gj} \sigma_g^2)^{1/2}} \mbox{exp} (- \frac{\hat{\beta}_{gj}^2} {2 v_{gj} \sigma_g^2}) \\ \times (\frac{d_g}{2\sigma_g^2})^{d_g/2} \frac{s_g^{2(d_g/2-1)}} {\Gamma(d_g/2)} \mbox{exp} (- \frac{d_g s_g^2} {2\sigma_g^2}) \\ \times
@@ -162,6 +165,27 @@ $$\frac{1} {(2 \pi v_{gj} \sigma_g^2)^{1/2}} \mbox{exp} (- \frac{\hat{\beta}_{gj
 = \frac{(d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)}} {(2 \pi v_{gj})^{1/2} \Gamma(d_g/2) \Gamma(d_0/2)} \sigma_g^{2(-1/2 -d_0/2 - d_g/2 - 1)} \mbox{exp} \{- ( \frac{\hat{\beta}_{gj}^2} {v_{gj}} + d_g s_g^2 + d_0 s_0^2)/{2 \sigma_g^2} \}$$
 
 which integrates to:
-$$f(\hat{\beta}_{gj}, s_g^2 | \beta = 0) \\= 
-(1/{2 v_{gj}}^{1/2}) (d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)} \frac{\Gamma(1/2 + d_0/2 + d_g/2)} {\Gamma(d_0/2) \Gamma(d_g/2)} (\frac{\hat{\beta}_{gj}^2 / v_{gj} + d_0 s_0^2 + d_g s_g^2}{2})^{-(1 + d_0 + d_g)/2}$$
-Clearly $\hat{\beta}_{gj}$ and $s_g^2$ is not independent.
+$$f(\hat{\beta}_{gj}, s_g^2 | \beta_{gj} = 0) \\= 
+(1/{2 \pi v_{gj}})^{1/2} (d_0 s_0^2 / 2)^{d_0/2} (d_g/2)^{d_g/2} s_g^{2(d_g/2 - 1)} \frac{\Gamma(1/2 + d_0/2 + d_g/2)} {\Gamma(d_0/2) \Gamma(d_g/2)} (\frac{\hat{\beta}_{gj}^2 / v_{gj} + d_0 s_0^2 + d_g s_g^2}{2})^{-(1 + d_0 + d_g)/2}$$
+Clearly $\hat{\beta}_{gj}$ and $s_g^2$ is not no longer independent under the unconditional distribution.
+
+The null joint contribution of $\tilde{t}_{gj}$ and $s_g^2$ is
+$$f(\tilde{t}_{gj}, s_g^2 | \beta_{gj} = 0) = \tilde{t}_{gj} v_{gj} f(\hat{\beta}_{gj}^2, s_g^2 | \beta = 0)$$ 
+which after collection of factors yields
+$$f(\tilde{t}_{gj}, s_g^2 | \beta_{gj} = 0) = \frac{(d_0 s_0^2)^{d_0/2} d_g^{d_g/2} s_g^{2(d_g/2-1)}} {B(d_g/2, d_0/2) (d_0 s_0^2 + d_g s_g^2)^(d_0/2 + d_g/2)} \\ \times
+\frac{(d_0 + d_g)^{-1/2}} {B(1/2, d_0/2+d_g/2)} (1 + \frac{\tilde{t}_{gj}^2} {d_0+d_g})^{-(1+d_0+d_g)/2}
+$$
+
+This shows that $\tilde{t}_{gj}$ and $s_g^2$ are independent with:
+$$s_g^2 \sim s_0^2 F_{d_g,d_0}$$
+and $$\tilde{t}_{gj} | \beta_{gj} = 0 \sim t_{d_g+d_0}$$
+
+The marginal distribution of $\tilde{t}_{gj}$ over all the genes is therefore a mixture of a scaled t-distibution and an ordinary t-distribution with mixing proportions $p$ and $1-p$.
+
+#### Posterior Odds
+
+
+
+
+
+
