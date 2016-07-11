@@ -110,7 +110,7 @@ v_gj <- diag(contrasts.fit(fit, con)$cov)
 ```
 
 ## Hierarchical Models
-limma uses emprical bayes to allow robust estimation of standard error when sample size is small. The key is to define the prior distributions for unknown coefficients $\hat{\beta{gj}}$ and unknown variances $\sigma_g^2$.
+limma uses emprical bayes to allow robust estimation of standard error when sample size is small. The key is to define the prior distributions for unknown coefficients $\hat{\beta}_{gj}$ and unknown variances $\sigma_g^2$.
 
 We can pool the whole genes to derive infomation for prior distriubtions. The prior distribution, which describes randomness in picking a gene is:
 $$\frac{1}{\sigma_g^2} \sim \frac{1}{d_0 s_0^2} \chi_{d_0}^2$$
@@ -151,9 +151,13 @@ $$\sigma_g^2 | s_g^2 \sim \frac{d_g s_g^2 + d_0 s_0^2} {\chi_{d_g + d_0}^2}$$
 And, $$\tilde{s_g}^{-2} = \mbox{E} (\sigma_g^{-2} | s_g^2) = \frac{d_g s_g^2 + d_0 s_0^2} {d_g + d_0}$$
 
 Now define the moderate t-statistic as:
+$$\begin{align} \tilde{t_gj} | \beta_{gj} \ne 0 = \mbox{E} (\frac{1}{\sigma_g^2}  | s_g^2) \frac{\hat{\beta}_{gj}} {\sqrt{v_{gj}}} = \frac{\hat{\beta}_{gj}} {\tilde{s}_g \sqrt{v_{gj}}} \end{align}$$
 
 The posterior mean shrinks the observed variance $s_g^2$ towards the global variance $s_0^2$ and the weights depend on the sample size through the degrees of freedom $d_g$ and the shape of the prior distribution through $d_0$. 
 
+For those whose $\beta_{gj}$ is not equal to zero, we first derive the null joint distribution:
+$$\hat{\beta}_{gj}, s_g^2 | \beta_{gj} \ne 0 \sim N(0, (v_{0j} + v_{gj}) \sigma_g^2)$$
+and similarly, we can define the moderated t-statistic as $\tilde{t}_{gj} (\frac{v_{gj}} {v_{gj} + v_{0j}})^{1/2}$.
 
 #### Marginal distribution
 Now we compute the null joint distribution of $\hat{\beta}_{gj}$ and $s_g^2$, here assuming $\hat{\beta}_{gj}$ and $s_g^2$ is independen under the conditional distribution, we get:
@@ -170,7 +174,7 @@ $$f(\hat{\beta}_{gj}, s_g^2 | \beta_{gj} = 0) \\=
 Clearly $\hat{\beta}_{gj}$ and $s_g^2$ is not no longer independent under the unconditional distribution.
 
 The null joint contribution of $\tilde{t}_{gj}$ and $s_g^2$ is
-$$f(\tilde{t}_{gj}, s_g^2 | \beta_{gj} = 0) = \tilde{t}_{gj} v_{gj} f(\hat{\beta}_{gj}^2, s_g^2 | \beta = 0)$$ 
+$$f(\tilde{t}_{gj}, s_g^2 | \beta_{gj} = 0) = \tilde{t}_{gj} v_{gj}^{1/2} f(\hat{\beta}_{gj}^2, s_g^2 | \beta = 0)$$ 
 which after collection of factors yields
 $$f(\tilde{t}_{gj}, s_g^2 | \beta_{gj} = 0) = \frac{(d_0 s_0^2)^{d_0/2} d_g^{d_g/2} s_g^{2(d_g/2-1)}} {B(d_g/2, d_0/2) (d_0 s_0^2 + d_g s_g^2)^(d_0/2 + d_g/2)} \\ \times
 \frac{(d_0 + d_g)^{-1/2}} {B(1/2, d_0/2+d_g/2)} (1 + \frac{\tilde{t}_{gj}^2} {d_0+d_g})^{-(1+d_0+d_g)/2}
@@ -180,12 +184,18 @@ This shows that $\tilde{t}_{gj}$ and $s_g^2$ are independent with:
 $$s_g^2 \sim s_0^2 F_{d_g,d_0}$$
 and $$\tilde{t}_{gj} | \beta_{gj} = 0 \sim t_{d_g+d_0}$$
 
-The marginal distribution of $\tilde{t}_{gj}$ over all the genes is therefore a mixture of a scaled t-distibution and an ordinary t-distribution with mixing proportions $p$ and $1-p$.
+The above derivation goes through similarly with $\beta_{gj} \ne 0$, the only difference being that
+$$\tilde{t}_{gj} | \beta_{gj} \ne 0 \sim (1 + v_{0j}/v_{gj})^{1/2} t_{d_0 + d_g}$$
+
+The marginal distribution of $\tilde{t}_{gj}$ over all the genes is therefore a mixture of a scaled t-distibution and an ordinary t-distribution with mixing proportions $p_j$ and $1-p_j$.
 
 #### Posterior Odds
 
+The odds that the gene g has non-zero $\beta_{gj}$ (differentially expressed with respect to contrast $\beta_{gj}$) is 
+$$\begin{align} O_{gj} = \frac{f(\beta_{gj} \ne 0 | \tilde{t}_{gj}, s_g^2)} {f(\beta_{gj} = 0 | \tilde{t}_{gj}, s_g^2)} = \frac{f(\beta_{gj} \ne 0 , \tilde{t}_{gj}, s_g^2)} {f(\beta_{gj} = 0 , \tilde{t}_{gj}, s_g^2)}) &= \frac{p_j}{1-p_j} \frac{f(\tilde{t}_{gj}| \beta_{gj} \ne 0} {f(\tilde{t}_{gj}| \beta_{gj} = 0}) \\
+&= \frac{p_j}{1-p_j} (\frac{v_{gj}} {v_{gj} + v_{0j}}^{1/2}) (\frac{\tilde{t}_{gj}^2 + d_0 + d_g} {\tilde{t}_{gj}^2 \frac{v_{gj}} {v_{gj} + v_{0j}} + d_0 + d_g})^{(1+d_0+d_g)/2}
+\end{align}$$
+and $$B_{gj} = \mbox{log} O_{gj}$$
 
-
-
-
+#### Estimation of Hyperparameters
 
