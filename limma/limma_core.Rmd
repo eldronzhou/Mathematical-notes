@@ -197,5 +197,3 @@ $$\begin{align} O_{gj} = \frac{f(\beta_{gj} \ne 0 | \tilde{t}_{gj}, s_g^2)} {f(\
 \end{align}$$
 and $$B_{gj} = \mbox{log} O_{gj}$$
 
-#### Estimation of Hyperparameters
-

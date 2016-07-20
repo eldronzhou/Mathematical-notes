@@ -326,7 +326,15 @@ v_gj &lt;- diag(contrasts.fit(fit, con)$cov)
 <h4>Posterior Odds</h4>
 <p>The odds that the gene g has non-zero <span class="math">\(\beta_{gj}\)</span> (differentially expressed with respect to contrast <span class="math">\(\beta_{gj}\)</span>) is <span class="math">\[\begin{align} O_{gj} = \frac{f(\beta_{gj} \ne 0 | \tilde{t}_{gj}, s_g^2)} {f(\beta_{gj} = 0 | \tilde{t}_{gj}, s_g^2)} = \frac{f(\beta_{gj} \ne 0 , \tilde{t}_{gj}, s_g^2)} {f(\beta_{gj} = 0 , \tilde{t}_{gj}, s_g^2)}) &amp;= \frac{p_j}{1-p_j} \frac{f(\tilde{t}_{gj}| \beta_{gj} \ne 0} {f(\tilde{t}_{gj}| \beta_{gj} = 0}) \\
 &amp;= \frac{p_j}{1-p_j} (\frac{v_{gj}} {v_{gj} + v_{0j}}^{1/2}) (\frac{\tilde{t}_{gj}^2 + d_0 + d_g} {\tilde{t}_{gj}^2 \frac{v_{gj}} {v_{gj} + v_{0j}} + d_0 + d_g})^{(1+d_0+d_g)/2}
-\end{align}\]</span></p>
+\end{align}\]</span> and <span class="math">\[B_{gj} = \mbox{log} O_{gj}\]</span></p>
+</div>
+</div>
+<div id="estimation-of-hyperparameters" class="section level2">
+<h2>Estimation of Hyperparameters</h2>
+<p>All the hyperparameters are estimated from data. That’s why it is called empirical bayes approach. The large size of simultaneously measured gene statistics enable robust moment estimation.</p>
+<div id="estimation-of-d_0-and-s_0" class="section level4">
+<h4>Estimation of <span class="math">\(d_0\)</span> and <span class="math">\(s_0\)</span></h4>
+<p>As <span class="math">\(s_g^2\)</span> follows a scaled F-distribution, <span class="math">\(z_g = \mbox{log} s_g^2\)</span> is distributed as a constant plus Fisher’s z distribution, with: <span class="math">\[E(z_g) = \mbox{log} s_0^2 + \phi(d_g/2) - \phi(d_0/2) + \mbox{log} (d_0/d_g)\]</span> and <span class="math">\[\mbox{var} (z_g) = \phi^\prime(d_g/2) + \phi^\prime(d_0/2)\]</span></p>
 </div>
 </div>
 
